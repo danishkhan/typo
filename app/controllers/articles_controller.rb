@@ -2,7 +2,7 @@ class ArticlesController < ContentController
   before_filter :login_required, :only => [:preview]
   before_filter :auto_discovery_feed, :only => [:show, :index]
   before_filter :verify_config
-  
+
   layout :theme_layout, :except => [:comment_preview, :trackback]
 
   cache_sweeper :blog_sweeper
@@ -18,7 +18,7 @@ class ArticlesController < ContentController
       format.rss { @limit = this_blog.limit_rss_display }
       format.atom { @limit = this_blog.limit_rss_display }
     end
-    
+
     unless params[:year].blank?
       @noindex = 1
       @articles = Article.paginate :page => params[:page], :conditions => { :published_at => time_delta(*params.values_at(:year, :month, :day)), :published => true }, :order => 'published_at DESC', :per_page => @limit
@@ -26,11 +26,11 @@ class ArticlesController < ContentController
       @noindex = 1 unless params[:page].blank?
       @articles = Article.paginate :page => params[:page], :conditions => ['published = ? AND published_at < ?', true, Time.now], :order => 'published_at DESC', :per_page => @limit
     end
-    
+
     @page_title = index_title
     @description = index_description
     @keywords = (this_blog.meta_keywords.empty?) ? "" : this_blog.meta_keywords
-    
+
     respond_to do |format|
       format.html { render_paginated_index }
       format.atom do
@@ -48,8 +48,8 @@ class ArticlesController < ContentController
     return error(_("No posts found..."), :status => 200) if @articles.empty?
     respond_to do |format|
       format.html { render :action => 'search' }
-      format.rss { render :partial => "articles/rss20_feed", :object => @articles }
-      format.atom { render :partial => "articles/atom_feed", :object => @articles }
+      format.rss { render :partial => "articles/rss20_feed", :locals => { :items => @articles } }
+      format.atom { render :partial => "articles/atom_feed", :locals => { :items => @articles } }
     end
   end
 
@@ -64,15 +64,25 @@ class ArticlesController < ContentController
     render :action => 'read'
   end
 
+  def check_password
+    return unless request.xhr?
+    @article = Article.find(params[:article][:id])
+    if @article.password == params[:article][:password]
+      render :partial => 'articles/article_content'
+    else
+      render :partial => 'articles/password_form', :locals => { :article => @article }
+    end
+  end
+
   def redirect
     part = this_blog.permalink_format.split('/')
     part.delete('') # delete all par of / where no data. Avoid all // or / started
     params[:from].delete('')
     if params[:from].last =~ /\.atom$/
-      params[:format] = 'atom'
+      request.format = 'atom'
       params[:from].last.gsub!(/\.atom$/, '')
     elsif params[:from].last =~ /\.rss$/
-      params[:format] = 'rss'
+      request.format = 'rss'
       params[:from].last.gsub!(/\.rss$/, '')
     end
     zip_part = part.zip(params[:from])
@@ -92,7 +102,7 @@ class ArticlesController < ContentController
     begin
       @article = this_blog.requested_article(article_params)
     rescue
-      #Not really good. 
+      #Not really good.
       # TODO :Check in request_article type of DATA made in next step
     end
     return show_article if @article
@@ -119,7 +129,7 @@ class ArticlesController < ContentController
       begin
         @article = this_blog.requested_article(article_params)
       rescue
-        #Not really good. 
+        #Not really good.
         # TODO :Check in request_article type of DATA made in next step
       end
       if @article
@@ -135,7 +145,7 @@ class ArticlesController < ContentController
 
     if(r)
       path = r.to_path
-      url_root = self.class.relative_url_root
+      url_root = this_blog.root_path
       path = url_root + path unless url_root.nil? or path[0,url_root.length] == url_root
       redirect_to path, :status => 301
     else
@@ -197,13 +207,13 @@ class ArticlesController < ContentController
       return true
     end
   end
-  
+
   # See an article We need define @article before
   def show_article
     @comment      = Comment.new
     @page_title   = @article.title
     article_meta
-    
+
     auto_discovery_feed
     respond_to do |format|
       format.html { render :template => '/articles/read' }
@@ -218,8 +228,8 @@ class ArticlesController < ContentController
   def article_meta
     @keywords = ""
     @keywords << @article.categories.map { |c| c.name }.join(", ") << ", " unless @article.categories.empty?
-    @keywords << @article.tags.map { |t| t.name }.join(", ") unless @article.tags.empty?  
-    @description = "#{@article.title}, " 
+    @keywords << @article.tags.map { |t| t.name }.join(", ") unless @article.tags.empty?
+    @description = "#{@article.title}, "
     @description << @article.categories.map { |c| c.name }.join(", ") << ", " unless @article.categories.empty?
     @description << @article.tags.map { |t| t.name }.join(", ") unless @article.tags.empty?
     @description << " #{this_blog.blog_name}"
@@ -227,15 +237,15 @@ class ArticlesController < ContentController
 
   def send_feed(format)
     if this_blog.feedburner_url.empty? or request.env["HTTP_USER_AGENT"] =~ /FeedBurner/i
-      render :partial => "articles/#{format}_feed", :object => @articles
+      render :partial => "articles/#{format}_feed", :locals => { :items => @articles }
     else
       redirect_to "http://feeds2.feedburner.com/#{this_blog.feedburner_url}"
     end
   end
-  
+
   # TODO: Merge with send_feed?
   def render_feed(type)
-    render :partial => "/articles/#{type}_feed", :object => @article.published_feedback 
+    render :partial => "/articles/#{type}_feed", :locals => { :items => @article.published_feedback }
   end
 
   def set_headers
@@ -254,32 +264,34 @@ class ArticlesController < ContentController
   end
 
   def index_title
-    returning('') do |page_title|
-      page_title << formatted_date_selector(_('Archives for '))
+    page_title = formatted_date_selector(_('Archives for '))
 
-      if params[:page]
-        page_title << 'Older posts' if page_title.blank?
-        page_title << ", page " << params[:page]
-      end
+    if params[:page]
+      page_title << 'Older posts' if page_title.blank?
+      page_title << ", page " << params[:page]
     end
+
+    page_title
   end
-  
+
   def index_description
-    returning('') do |page_description|
-      if this_blog.meta_description.empty?
-      page_description << "#{this_blog.blog_name} #{this_blog.blog_subtitle}" 
-      else
-        page_description << this_blog.meta_description
-      end
-      
-      page_description << formatted_date_selector(_(', Articles for '))
-      
-      if params[:page]
-        page_description << ", page " << params[:page]
-      end
+    page_description = ''
+
+    if this_blog.meta_description.empty?
+      page_description << "#{this_blog.blog_name} #{this_blog.blog_subtitle}"
+    else
+      page_description << this_blog.meta_description
     end
+
+    page_description << formatted_date_selector(_(', Articles for '))
+
+    if params[:page]
+      page_description << ", page " << params[:page]
+    end
+
+    page_description
   end
-  
+
   def time_delta(year, month = nil, day = nil)
     from = Time.mktime(year, month || 1, day || 1)
 
@@ -289,7 +301,7 @@ class ArticlesController < ContentController
     to = to - 1 # pull off 1 second so we don't overlap onto the next day
     return from..to
   end
-    
+
   def formatted_date_selector(prefix = '')
     return '' unless params[:year]
     format = prefix

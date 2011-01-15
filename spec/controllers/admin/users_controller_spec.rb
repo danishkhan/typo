@@ -1,7 +1,7 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
+require 'spec_helper'
 
 describe Admin::UsersController, "rough port of the old functional test" do
-  integrate_views
+  render_views
   fixtures :users
 
   describe ' when you are admin' do
@@ -12,7 +12,7 @@ describe Admin::UsersController, "rough port of the old functional test" do
     it "test_index" do
       get :index
       assert_template 'index'
-      assert_template_has 'users'
+      assigns(:users).should_not be_nil
     end
 
     it "test_new" do
@@ -37,7 +37,7 @@ describe Admin::UsersController, "rough port of the old functional test" do
       end
 
       describe 'with GET request' do
-        describe 'edit admin render', :shared => true do
+        shared_examples_for 'edit admin render' do
           it 'should render template edit' do
             assert_template 'edit'
           end

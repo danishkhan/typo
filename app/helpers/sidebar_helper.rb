@@ -3,7 +3,7 @@ module SidebarHelper
     begin
       (sidebars.blank? ? Sidebar.find(:all, :order => 'active_position ASC') : sidebars).inject('') do |acc, sb|
         @sidebar = sb
-        sb.parse_request(contents, params)
+        sb.parse_request(content_array, params)
         acc + render_sidebar(sb)
       end
     rescue
@@ -16,7 +16,7 @@ module SidebarHelper
     if sidebar.view_root
       # Allow themes to override sidebar views
       view_root = File.expand_path(sidebar.view_root)
-      rails_root = File.expand_path(RAILS_ROOT)
+      rails_root = File.expand_path(::Rails.root.to_s)
       if view_root =~ /^#{Regexp.escape(rails_root)}/
         new_root = view_root[rails_root.size..-1]
         new_root.sub! %r{^/?vendor/}, ""
@@ -25,10 +25,12 @@ module SidebarHelper
         view_root = new_root if File.exists?(File.join(new_root, "content.rhtml"))
       end
       render_to_string(:file => "#{view_root}/content.rhtml",
-                       :locals => sidebar.to_locals_hash)
+                       :locals => sidebar.to_locals_hash,
+                       :layout => false)
     else
       render_to_string(:partial => sidebar.content_partial,
-                       :locals => sidebar.to_locals_hash)
+                       :locals => sidebar.to_locals_hash,
+                       :layout => false)
     end
   end
 

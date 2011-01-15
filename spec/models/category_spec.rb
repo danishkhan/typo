@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require 'spec_helper'
 
 describe 'Given the results of Category.find_all_with_article_counters' do
   before(:each) { @cats = Category.find_all_with_article_counters }
@@ -23,21 +23,26 @@ describe 'Given the fixtures' do
   end
 
   it 'can still override order in find' do
+    3.times { Factory(:category) }
+    Factory(:category, :name => 'aaa')
     cats = Category.find(:all, :order => 'name ASC')
-
     cats.should == cats.sort_by {|c| c.name}
     Category.find(:all).should_not == cats
   end
 
   it '.reorder_alpha puts categories in alphabetical order' do
+    3.times { Factory(:category) }
+    Factory(:category, :name => 'aaa')
     Category.find(:all).should_not == Category.find(:all, :order => :name)
     Category.reorder_alpha
     Category.find(:all).should == Category.find(:all, :order => :name)
   end
+end
 
-  it 'A category knows its url' do
-    categories(:software).permalink_url.should ==
-      'http://myblog.net/category/software'
+describe Category do
+  describe "permalink" do
+    subject { Factory(:category, :permalink => 'software').permalink_url }
+    it { should == 'http://myblog.net/category/software' }
   end
 end
 

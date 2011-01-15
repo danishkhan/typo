@@ -8,22 +8,21 @@ class Admin::SettingsController < Admin::BaseController
     end
     load_settings
   end
-  
-  def read; load_settings end
+
   def write; load_settings end
   def feedback; load_settings end
-  
+
   def seo
     load_settings
-    if File.exists? "#{RAILS_ROOT}/public/robots.txt"
+    if File.exists? "#{::Rails.root.to_s}/public/robots.txt"
       @setting.robots = ""
-      file = File.readlines("#{RAILS_ROOT}/public/robots.txt")
+      file = File.readlines("#{::Rails.root.to_s}/public/robots.txt")
       file.each do |line|
         @setting.robots << line
       end
     end
   end
-  
+
   def redirect
     flash[:notice] = _("Please review and save the settings before continuing")
     redirect_to :action => "index"
@@ -36,15 +35,15 @@ class Admin::SettingsController < Admin::BaseController
         this_blog.save
         flash[:notice] = _('config updated.')
       end
-      
+
       save_robots unless params[:setting][:robots].blank?
-      
+
       redirect_to :action => params[:from]
     end
   rescue ActiveRecord::RecordInvalid
     render :action => params[:from]
   end
-  
+
   def update_database
     @current_version = Migrator.current_schema_version
     @needed_version = Migrator.max_schema_version
@@ -60,15 +59,15 @@ class Admin::SettingsController < Admin::BaseController
       redirect_to :action => 'update_database'
     end
   end
-  
+
   private
   def load_settings
     @setting = this_blog
   end
-  
+
   def save_robots
-    if File.writable? "#{RAILS_ROOT}/public/robots.txt"
-      robots = File.new("#{RAILS_ROOT}/public/robots.txt", "r+")
+    if File.writable? "#{::Rails.root.to_s}/public/robots.txt"
+      robots = File.new("#{::Rails.root.to_s}/public/robots.txt", "r+")
       robots.write(params[:setting][:robots])
       robots.close
     end

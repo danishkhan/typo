@@ -1,7 +1,9 @@
 ActionController::Routing::Routes.draw do |map|
 
-  # default
-  map.root :controller  => 'articles', :action => 'index'
+  # for CK Editor
+  map.connect 'fm/filemanager/:action/:id', :controller => 'Fm::Filemanager'
+  map.connect 'ckeditor/command', :controller => 'ckeditor', :action => 'command'
+  map.connect 'ckeditor/upload', :controller => 'ckeditor', :action => 'upload'
 
   # TODO: use only in archive sidebar. See how made other system
   map.articles_by_month ':year/:month', :controller => 'articles', :action => 'index', :year => /\d{4}/, :month => /\d{1,2}/
@@ -17,32 +19,33 @@ ActionController::Routing::Routes.draw do |map|
 
   map.rss 'articles.rss', :controller => 'articles', :action => 'index', :format => 'rss'
   map.atom 'articles.atom', :controller => 'articles', :action => 'index', :format => 'atom'
-  
+
   map.with_options :controller => 'xml', :path_prefix => 'xml' do |controller|
     controller.xml 'articlerss/:id/feed.xml', :action => 'articlerss'
     controller.xml 'commentrss/feed.xml', :action => 'commentrss'
     controller.xml 'trackbackrss/feed.xml', :action => 'trackbackrss'
-    
+
     controller.with_options :action => 'feed' do |action|
       action.xml 'rss', :type => 'feed', :format => 'rss'
       action.xml 'sitemap.xml', :format => 'googlesitemap', :type => 'sitemap', :path_prefix => nil
       action.xml ':format/feed.xml', :type => 'feed'
-      action.xml ':format/:type/feed.xml'
       action.xml ':format/:type/:id/feed.xml'
+      action.xml ':format/:type/feed.xml'
     end
   end
-  
+
 
   map.resources :comments, :name_prefix => 'admin_', :collection => [:preview]
   map.resources :trackbacks
 
   map.live_search_articles '/live_search/', :controller => "articles", :action => "live_search"
+  map.search '/search/:q.:format/page/:page', :controller => "articles", :action => "search"
   map.search '/search/:q.:format', :controller => "articles", :action => "search"
   map.search_base '/search/', :controller => "articles", :action => "search"
   map.connect '/archives/', :controller => "articles", :action => "archives"
   map.connect '/setup', :controller => 'setup', :action => 'index'
   map.connect '/setup/confirm', :controller => 'setup', :action => 'confirm'
-  
+
   # I thinks it's useless. More investigating
   map.connect "trackbacks/:id/:day/:month/:year",
     :controller => 'trackbacks', :action => 'create', :conditions => {:method => :post}
@@ -52,7 +55,7 @@ ActionController::Routing::Routes.draw do |map|
   map.resources :categories, :as => 'category', :only => [:show, :edit, :update, :destroy]
 
   map.connect '/category/:id/page/:page', :controller => 'categories', :action => 'show'
-  
+
   # Before use inflected_resource
   map.resources :tags, :except => [:show, :update, :destroy, :edit]
   map.resources :tags, :as => 'tag', :only => [:show, :edit, :update, :destroy]
@@ -60,9 +63,9 @@ ActionController::Routing::Routes.draw do |map|
   map.connect '/tag/:id/page/:page', :controller => 'tags', :action => 'show'
   map.connect '/tags/page/:page', :controller => 'tags', :action => 'index'
 
-  map.connect '/author/:id', :controller => 'authors', :action => 'show'
   map.xml '/author/:id.:format', :controller => 'authors', :action => 'show', :format => /rss|atom/
-  
+  map.connect '/author/:id', :controller => 'authors', :action => 'show'
+
   # allow neat perma urls
   map.connect 'page/:page',
     :controller => 'articles', :action => 'index',
@@ -87,6 +90,7 @@ ActionController::Routing::Routes.draw do |map|
   end
 
   map.connect 'previews/:id', :controller => 'articles', :action => 'preview'
+  map.connect 'check_password', :controller => 'articles', :action => 'check_password'
 
   # Work around the Bad URI bug
   %w{ accounts backend files sidebar textfilter xml }.each do |i|
@@ -96,24 +100,27 @@ ActionController::Routing::Routes.draw do |map|
   end
 
   %w{advanced cache categories comments content profiles feedback general pages
-     resources sidebar textfilters themes trackbacks users settings tags }.each do |i|
+     resources sidebar textfilters themes trackbacks users settings tags redirects }.each do |i|
     map.connect "/admin/#{i}", :controller => "admin/#{i}", :action => 'index'
     map.connect "/admin/#{i}/:action/:id", :controller => "admin/#{i}", :action => nil, :id => nil
   end
+
+  # default
+  map.root :controller  => 'articles', :action => 'index'
 
   map.connect '*from', :controller => 'articles', :action => 'redirect'
 
   map.connect(':controller/:action/:id') do |default_route|
     class << default_route
       def recognize_with_deprecation(path, environment = {})
-        RAILS_DEFAULT_LOGGER.info "#{path} hit the default_route buffer"
+        ::Rails.logger.info "#{path} hit the default_route buffer"
         recognize_without_deprecation(path, environment)
       end
       alias_method_chain :recognize, :deprecation
 
       def generate_with_deprecation(options, hash, expire_on = {})
-        RAILS_DEFAULT_LOGGER.info "generate(#{options.inspect}, #{hash.inspect}, #{expire_on.inspect}) reached the default route"
-        #         if RAILS_ENV == 'test'
+        ::Rails.logger.info "generate(#{options.inspect}, #{hash.inspect}, #{expire_on.inspect}) reached the default route"
+        #         if ::Rails.env == 'test'
         #           raise "Don't rely on default route generation"
         #         end
         generate_without_deprecation(options, hash, expire_on)

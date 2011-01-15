@@ -1,13 +1,10 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
-
-require 'http_mock'
+require 'spec_helper'
 
 describe Admin::ContentController do
-  integrate_views
-
+  render_views
 
   # Like it's a shared, need call everywhere
-  describe 'index action', :shared => true do
+  shared_examples_for 'index action' do
 
     it 'should render template index' do
       get 'index'
@@ -36,7 +33,7 @@ describe Admin::ContentController do
 
   end
 
-  describe 'autosave action', :shared => true do
+  shared_examples_for 'autosave action' do
     it 'should save new article with draft status and link to other article if first autosave' do
       lambda do
       lambda do
@@ -121,12 +118,12 @@ describe Admin::ContentController do
   end
 
 
-  describe 'new action', :shared => true do
+  shared_examples_for 'new action' do
 
     it 'should render new with get' do
       get :new
       response.should render_template('new')
-      assert_template_has 'article'
+      assigns(:article).should_not be_nil
     end
 
     def base_article(options={})
@@ -139,7 +136,7 @@ describe Admin::ContentController do
 
     it 'should create article with no comments' do
       post(:new, 'article' => base_article({:allow_comments => '0'}),
-                 'categories' => [categories(:software).id])
+                 'categories' => [Factory(:category).id])
       assigns(:article).should_not be_allow_comments
       assigns(:article).should be_allow_pings
       assigns(:article).should be_published
@@ -147,7 +144,7 @@ describe Admin::ContentController do
 
     it 'should create article with no pings' do
       post(:new, 'article' => {:allow_pings => '0'},
-                 'categories' => [categories(:software).id])
+                 'categories' => [Factory(:category).id])
       assigns(:article).should be_allow_comments
       assigns(:article).should_not be_allow_pings
       assigns(:article).should be_published
@@ -164,13 +161,13 @@ describe Admin::ContentController do
         category = Factory(:category)
         emails = ActionMailer::Base.deliveries
 
-        assert_difference 'Article.count_published_articles' do
+        lambda do
           tags = ['foo', 'bar', 'baz bliz', 'gorp gack gar']
           post :new,
             'article' => base_article(:keywords => tags) ,
             'categories' => [category.id]
           assert_response :redirect, :action => 'show'
-        end
+        end.should change(Article, :count_published_articles)
 
         new_article = Article.last
         assert_equal @user, new_article.user
@@ -186,12 +183,12 @@ describe Admin::ContentController do
     end
 
     it 'should create article in future' do
-      assert_no_difference 'Article.count_published_articles' do
+      lambda do
         post(:new,
              :article =>  base_article(:published_at => Time.now + 1.hour) )
         assert_response :redirect, :action => 'show'
         assigns(:article).should_not be_published
-      end
+      end.should_not change(Article, :count_published_articles)
       assert_equal 1, Trigger.count
     end
 
@@ -211,20 +208,20 @@ describe Admin::ContentController do
 
   end
 
-  describe 'destroy action', :shared => true do
+  shared_examples_for 'destroy action' do
 
     it 'should_not destroy article by get' do
-      assert_no_difference 'Article.count' do
+      lambda do
         art_id = @article.id
         assert_not_nil Article.find(art_id)
 
         get :destroy, 'id' => art_id
         response.should be_success
-      end
+      end.should_not change(Article, :count)
     end
 
     it 'should destroy article by post' do
-      assert_difference 'Article.count', -1 do
+      lambda do
         art_id = @article.id
         post :destroy, 'id' => art_id
         response.should redirect_to(:action => 'index')
@@ -232,7 +229,7 @@ describe Admin::ContentController do
         lambda{
           article = Article.find(art_id)
         }.should raise_error(ActiveRecord::RecordNotFound)
-      end
+      end.should change(Article, :count).by(-1)
     end
 
   end
@@ -256,10 +253,10 @@ describe Admin::ContentController do
       it 'should edit article' do
         get :edit, 'id' => contents(:article1).id
         response.should render_template('new')
-        assert_template_has 'article'
+	assigns(:article).should_not be_nil
         assigns(:article).should be_valid
-        response.should have_text(/body/)
-        response.should have_text(/extended content/)
+        response.should contain(/body/)
+        response.should contain(/extended content/)
       end
 
       it 'should update article by edit action' do
@@ -320,12 +317,13 @@ describe Admin::ContentController do
 
       it 'should add resource' do
         art_id = contents(:article1).id
-        get :resource_add, :id => art_id, :resource_id => resources(:resource1).id
+        resource = Factory(:resource)
+        get :resource_add, :id => art_id, :resource_id => resource.id
 
         response.should render_template('_show_resources')
         assigns(:article).should be_valid
         assigns(:resource).should be_valid
-        assert Article.find(art_id).resources.include?(resources(:resource1))
+        assert Article.find(art_id).resources.include?(resource)
         assert_not_nil assigns(:article)
         assert_not_nil assigns(:resource)
         assert_not_nil assigns(:resources)
@@ -337,12 +335,13 @@ describe Admin::ContentController do
 
       it 'should remove resource' do
         art_id = contents(:article1).id
-        get :resource_remove, :id => art_id, :resource_id => resources(:resource1).id
+        resource = Factory(:resource)
+        get :resource_remove, :id => art_id, :resource_id => resource.id
 
         response.should render_template('_show_resources')
         assert assigns(:article).valid?
         assert assigns(:resource).valid?
-        assert !Article.find(art_id).resources.include?(resources(:resource1))
+        assert !Article.find(art_id).resources.include?(resource)
         assert_not_nil assigns(:article)
         assert_not_nil assigns(:resource)
         assert_not_nil assigns(:resources)
@@ -350,6 +349,12 @@ describe Admin::ContentController do
     end
 
     describe 'auto_complete_for_article_keywords action' do
+      before do
+        Factory(:tag, :name => 'foo', :articles => [Factory(:article)])
+        Factory(:tag, :name => 'bazz', :articles => [Factory(:article)])
+        Factory(:tag, :name => 'bar', :articles => [Factory(:article)])
+      end
+
       it 'should return foo for keywords fo' do
         get :auto_complete_for_article_keywords, :article => {:keywords => 'fo'}
         response.should be_success
@@ -362,7 +367,7 @@ describe Admin::ContentController do
         response.body.should == '<ul></ul>'
       end
 
-      it 'should return bar and baz for ba keyword' do
+      it 'should return bar and bazz for ba keyword' do
         get :auto_complete_for_article_keywords, :article => {:keywords => 'ba'}
         response.should be_success
         response.body.should == '<ul><li>bar</li><li>bazz</li></ul>'
@@ -393,7 +398,7 @@ describe Admin::ContentController do
       it 'should edit article' do
         get :edit, 'id' => contents(:publisher_article).id
         response.should render_template('new')
-        assert_template_has 'article'
+        assigns(:article).should_not be_nil
         assigns(:article).should be_valid
       end
 
@@ -423,21 +428,18 @@ describe Admin::ContentController do
     describe 'destroy action can be access' do
 
       it 'should redirect when want destroy article' do
-        assert_no_difference 'Article.count' do
+        lambda do
           get :destroy, :id => contents(:article1)
           response.should redirect_to(:action => 'index')
-        end
+        end.should_not change(Article, :count)
       end
 
       it 'should redirect when want destroy article' do
-        assert_no_difference 'Article.count' do
+        lambda do
           post :destroy, :id => contents(:article1)
           response.should redirect_to(:action => 'index')
-        end
+        end.should_not change(Article, :count)
       end
-
     end
-
   end
-
 end

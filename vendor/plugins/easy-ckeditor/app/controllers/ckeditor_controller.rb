@@ -4,7 +4,7 @@ require 'tmpdir'
 class CkeditorController < ActionController::Base
 
   UPLOAD_FOLDER = "/files"
-  UPLOAD_ROOT = RAILS_ROOT + "/public" + UPLOAD_FOLDER
+  UPLOAD_ROOT = ::Rails.root.to_s + "/public" + UPLOAD_FOLDER
 
   MIME_TYPES = [
     "image/jpg",
@@ -12,6 +12,7 @@ class CkeditorController < ActionController::Base
     "image/pjpeg",
     "image/gif",
     "image/png",
+    "image/x-png",
     "application/x-shockwave-flash"
   ]
 
@@ -92,9 +93,9 @@ class CkeditorController < ActionController::Base
   end
 
   def upload_file
-    begin      
+    begin
       load_file_from_params
-      Resource.create(:filename => @new_file.original_filename, :mime => @ftype, :created_at => Time.now)    
+      Resource.create(:filename => @new_file.original_filename, :mime => @ftype, :created_at => Time.now)
       copy_tmp_file(@new_file) if mime_types_ok(@ftype)
     rescue => e
       @errorNumber = 110 if @errorNumber.nil?
@@ -104,7 +105,7 @@ class CkeditorController < ActionController::Base
     <html>
       <body>
         <script type="text/javascript">
-          window.parent.CKEDITOR.tools.callFunction(1, "#{url_for(:controller => "/articles").gsub(%r{/$},'')}/#{uploaded_file_path}");
+          window.parent.CKEDITOR.tools.callFunction(#{params[:CKEditorFuncNum]}, "#{uploaded_file_path}");
         </script>
       </body>
     </html>'
@@ -160,10 +161,10 @@ class CkeditorController < ActionController::Base
   end
 
   ##############################################################################
-  # Puts a messgae info in the current log, only if RAILS_ENV is 'development'
+  # Puts a messgae info in the current log, only if ::Rails.env is 'development'
   #
   def log(str)
-    RAILS_DEFAULT_LOGGER.info str if RAILS_ENV == 'development'
+    ::Rails.logger.info str if ::Rails.env == 'development'
   end
 
   ##############################################################################
@@ -172,7 +173,7 @@ class CkeditorController < ActionController::Base
   def log_upload
     log "CKEDITOR - #{params[:upload]}"
     log "CKEDITOR - UPLOAD_FOLDER: #{UPLOAD_FOLDER}"
-    log "CKEDITOR - #{File.expand_path(RAILS_ROOT)}/public#{UPLOAD_FOLDER}/" +
+    log "CKEDITOR - #{File.expand_path(::Rails.root.to_s)}/public#{UPLOAD_FOLDER}/" +
         "#{@new_file.original_filename}"
   end
 
@@ -207,7 +208,7 @@ class CkeditorController < ActionController::Base
   def check_file(file)
     log "CKEDITOR ---- CLASS OF UPLOAD OBJECT: #{file.class}"
 
-    unless "#{file.class}" == "Tempfile" || "StringIO"
+    unless [Tempfile, StringIO].contains file.class
       @errorNumber = 403
       throw Exception.new
     end

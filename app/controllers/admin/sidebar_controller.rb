@@ -70,12 +70,12 @@ class Admin::SidebarController < Admin::BaseController
       end
       Sidebar.delete_all('active_position is null')
     end
-    sweep_cache
+    PageCache.sweep_all
     index
   end
 
   protected
-  
+
   def show_available
     render :partial => 'availables', :object => available
   end

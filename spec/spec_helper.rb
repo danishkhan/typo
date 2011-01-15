@@ -1,18 +1,21 @@
-# This file is copied to ~/spec when you run 'ruby script/generate rspec'
-# from the project root directory.
+# This file is copied to spec/ when you run 'rails generate rspec:install'
 ENV["RAILS_ENV"] ||= 'test'
-require File.dirname(__FILE__) + "/../config/environment" unless defined?(RAILS_ROOT)
-require 'spec/autorun'
-require 'spec/rails'
+require File.expand_path("../../config/environment", __FILE__)
+require 'rspec/rails'
+require 'factory_girl'
+Factory.find_definitions
 
-Spec::Runner.configure do |config|
+# Requires supporting ruby files with custom matchers and macros, etc,
+# in spec/support/ and its subdirectories.
+Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
+
+RSpec.configure do |config|
+  config.mock_with :rspec
   config.use_transactional_fixtures = true
   config.use_instantiated_fixtures  = false
-  config.fixture_path = RAILS_ROOT + '/test/fixtures/'
+  config.fixture_path = "#{::Rails.root}/test/fixtures"
   config.global_fixtures =
-    %w{ blogs categories categorizations contents
-        feedback notifications page_caches profiles redirects resources sidebars
-        tags text_filters triggers users }
+    %w{ blogs contents feedback profiles text_filters users }
 
   config.before(:each) do
     Localization.lang = :default
@@ -37,12 +40,6 @@ def create_file_in_spec_public_cache_directory(file)
   file_path
 end
 
-# TODO: Rewrite to be more RSpec-like instead of Test::Unit-like.
-def assert_template_has(key=nil, message=nil)
-  msg = build_message(message, "<?> is not a template object", key)
-  assert_block(msg) { @response.has_template_object?(key) }
-end
-
 def assert_xml(xml)
   assert_nothing_raised do
     assert REXML::Document.new(xml)
@@ -56,11 +53,11 @@ end
 # test standard view and all themes
 def with_each_theme
   yield nil, ""
-  Dir.new(File.join(RAILS_ROOT, "themes")).each do |theme|
+  Dir.new(File.join(::Rails.root.to_s, "themes")).each do |theme|
     next if theme =~ /\.\.?/
-    view_path = "#{RAILS_ROOT}/themes/#{theme}/views" 
-    if File.exists?("#{RAILS_ROOT}/themes/#{theme}/helpers/theme_helper.rb")
-      require "#{RAILS_ROOT}/themes/#{theme}/helpers/theme_helper.rb"
+    view_path = "#{::Rails.root.to_s}/themes/#{theme}/views"
+    if File.exists?("#{::Rails.root.to_s}/themes/#{theme}/helpers/theme_helper.rb")
+      require "#{::Rails.root.to_s}/themes/#{theme}/helpers/theme_helper.rb"
     end
     yield theme, view_path
   end
@@ -128,6 +125,38 @@ def parse_validator_messages(message)
     [false, messages.join("\n")]
   else
     [true, ""]
+  end
+end
+
+# Temporarily define #flunk until rspec-rails 2 beta 21 comes out.
+# TODO: Remove this once no longer needed!
+def flunk(*args, &block)
+  assertion_delegate.flunk(*args, &block)
+end
+
+# Make webrat's matchers treat XML like XML.
+# See Webrat ticket #345.
+# Solution adapted from the following patch:
+# http://github.com/indirect/webrat/commit/46b8d91c962e802fbcb14ee0bcf03aab1afa180a
+module Webrat #:nodoc:
+  module XML #:nodoc:
+
+    def self.document(stringlike) #:nodoc:
+      return stringlike.dom if stringlike.respond_to?(:dom)
+
+      case stringlike
+      when Nokogiri::HTML::Document, Nokogiri::XML::NodeSet
+        stringlike
+      else
+        stringlike = stringlike.body if stringlike.respond_to?(:body)
+
+        if stringlike.to_s =~ /\<\?xml/
+          Nokogiri::XML(stringlike.to_s)
+        else
+          Nokogiri::HTML(stringlike.to_s)
+        end
+      end
+    end
   end
 end
 

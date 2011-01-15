@@ -7,32 +7,35 @@
   <meta http-equiv="imagetoolbar" content="no" />
   <%= stylesheet_link_tag "growler", "administration", "lightbox" %>
   <%= stylesheet_link_tag "administration_rtl" if ( _("Localization.rtl") == "1") %>
-  <%= javascript_include_tag "prototype", "effects", "builder", "dragdrop", "controls", "typo", "lightbox", "quicktags", "growler", "typo_carousel", "administration", :ckeditor %>
-  <%= calendar_date_select_includes %>  
+  <%= javascript_include_tag "prototype", "effects", "builder", "dragdrop", "controls", "typo", "lightbox", "growler", "typo_carousel", "administration", "ckeditor/ckeditor" %>
+  <%= calendar_date_select_includes %>
 </head>
 <body>
   <div id='header'>
     <h1><%= link_to this_blog.blog_name, this_blog.base_url %></h1>
   </div>
-  <%= link_to _("%s &raquo;", "Log out"), {:controller => "/accounts", :action=>"logout"}, :id => 'logout' %>
+  <div id='logout'>
+    <%= link_to _("Profile"), { :controller => 'admin/profiles', :action => 'index'}  %> |
+    <%= link_to _("%s &raquo;", "Log out").html_safe, {:controller => "/accounts", :action=>"logout"} %>
+  </div>
 
 
   <div id='container' class='ui-tabs ui-widget ui-widget-content ui-corner-all'>
-    <div id='menu' class='ui-widget-header ui-corner-all'>
-      <ul id='tabs' class='ui-tabs-nav ui-helper-reset ui-helper-clearfix '>
+    <div id='menu' class='ui-widget-header-nobg ui-corner-all'>
+      <ul id='tabs' class='ui-tabs-nav ui-helper-reset ui-helper-clearfix'>
         <%= content_tag :li, (link_to _('Dashboard'), :controller => '/admin'), :class => class_dashboard  %>
         <% for pm in current_user.project_modules %>
           <%= content_tag :li, (link_to _(pm.menus.first.name ), pm.menus.first.url), :class => send("class_#{pm.name}") %>
         <% end %>
       </ul>
-      <ul class='ui-tabs-nav ui-helper-reset ui-helper-clearfix submenu'>
+      <ul class='ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all submenu'>
         <%= yield :tasks %>
       </ul>
     </div>
-    
+
     <div id='content' class='ui-tabs-panel'>
       <%= render_the_flash %>
-      
+
       <%= show_page_heading %>
       <%= yield  %>
     </div>

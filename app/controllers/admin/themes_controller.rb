@@ -50,8 +50,7 @@ class Admin::ThemesController < Admin::BaseController
     if path and filename
       if File.exists? path + filename
         if File.writable? path + filename
-          case request.method
-          when :post
+          if request.post?
             theme = File.new(path + filename, "r+")
             theme.write(params[:theme_body])
             theme.close
@@ -97,7 +96,7 @@ class Admin::ThemesController < Admin::BaseController
   end
 
   private
-  
+
   class ThemeItem < Struct.new(:image, :name, :url, :author, :description)
     def to_s; name; end
   end

@@ -4,11 +4,12 @@ require 'mini_magick'
 class Resource < ActiveRecord::Base
   validates_uniqueness_of :filename
   after_destroy :delete_filename_on_disk
-  before_validation_on_create :uniq_filename_on_disk
-  belongs_to :article
+  before_validation :uniq_filename_on_disk, :on => :create
   
+  belongs_to :article
+
   def fullpath(file = nil)
-    "#{RAILS_ROOT}/public/files/#{file.nil? ? filename : file}"
+    "#{::Rails.root.to_s}/public/files/#{file.nil? ? filename : file}"
   end
 
   def write_to_disk(up)
@@ -46,7 +47,6 @@ class Resource < ActiveRecord::Base
       nil
     end
   end
-
 
   protected
   def uniq_filename_on_disk

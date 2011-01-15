@@ -33,7 +33,7 @@ class BlogSweeper < ActionController::Caching::Sweeper
   end
 
   def after_save(record)
-    expire_for(record)
+    expire_for(record) unless (record.is_a?(Article) and record.state == :draft)
   end
 
   def after_destroy(record)
@@ -75,7 +75,7 @@ class BlogSweeper < ActionController::Caching::Sweeper
   end
 
   def logger
-    @logger ||= RAILS_DEFAULT_LOGGER || Logger.new(STDERR)
+    @logger ||= ::Rails.logger || Logger.new(STDERR)
   end
 
   private

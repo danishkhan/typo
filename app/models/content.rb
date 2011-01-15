@@ -22,7 +22,7 @@ class Content < ActiveRecord::Base
 
   has_many :triggers, :as => :pending_item, :dependent => :delete_all
 
-  named_scope :published_at_like, lambda {|date_at| {:conditions => {
+  scope :published_at_like, lambda {|date_at| {:conditions => {
     :published_at => (
       if date_at =~ /\d{4}-\d{2}-\d{2}/
         DateTime.strptime(date_at, '%Y-%m-%d').beginning_of_day..DateTime.strptime(date_at, '%Y-%m-%d').end_of_day
@@ -36,18 +36,18 @@ class Content < ActiveRecord::Base
     )}
   }
   }
-  named_scope :user_id, lambda {|user_id| {:conditions => ['user_id = ?', user_id]}}
-  named_scope :published, {:conditions => ['published = ?', true]}
-  named_scope :order, lambda {|order_by| {:order => order_by}}
-  named_scope :not_published, {:conditions => ['published = ?', false]}
-  named_scope :draft, {:conditions => ['state = ?', 'draft']}
-  named_scope :no_draft, {:conditions => ['state <> ?', 'draft'], :order => 'created_at DESC'}
-  named_scope :searchstring, lambda {|search_string|
+  scope :user_id, lambda {|user_id| {:conditions => ['user_id = ?', user_id]}}
+  scope :published, {:conditions => ['published = ?', true]}
+  scope :order, lambda {|order_by| {:order => order_by}}
+  scope :not_published, {:conditions => ['published = ?', false]}
+  scope :draft, {:conditions => ['state = ?', 'draft']}
+  scope :no_draft, {:conditions => ['state <> ?', 'draft'], :order => 'created_at DESC'}
+  scope :searchstring, lambda {|search_string|
     tokens = search_string.split(' ').collect {|c| "%#{c.downcase}%"}
     {:conditions => ['state = ? AND ' + (['(LOWER(body) LIKE ? OR LOWER(extended) LIKE ? OR LOWER(title) LIKE ?)']*tokens.size).join(' AND '),
                         "published", *tokens.collect{ |token| [token] * 3 }.flatten]}
   }
-  named_scope :already_published, lambda { {:conditions => ['published = ? AND published_at < ?', true, Time.now],
+  scope :already_published, lambda { {:conditions => ['published = ? AND published_at < ?', true, Time.now],
     :order => default_order,
     }}
 
@@ -253,7 +253,7 @@ class Content < ActiveRecord::Base
 
   # Set the text filter for this object.
   def text_filter=(filter)
-    returning(filter.to_text_filter) do |tf|
+    filter.to_text_filter.tap do |tf|
       if tf.id != text_filter_id
         changed if !new_record? && published?
       end
@@ -294,11 +294,10 @@ class Content < ActiveRecord::Base
   end
 
   def really_send_notifications
-    returning true do
-      interested_users.each do |value|
-        send_notification_to_user(value)
-      end
+    interested_users.each do |value|
+      send_notification_to_user(value)
     end
+    return true
   end
 
   def to_atom xml
@@ -331,6 +330,8 @@ class Content < ActiveRecord::Base
 
   def rss_description(xml)
     post = html(blog.show_extended_on_rss ? :all : :body)
+    post = "<p>This article is password protected. Please <a href='#{permalink_url}'>fill in your password</a> to read it</p>" unless self.class.name == 'Article' and (self.password.nil?  or self.password.empty?)
+
     if blog.rss_description
       if respond_to?(:user) && self.user && self.user.name
         rss_desc = "<hr /><p><small>#{_('Original article writen by')} #{self.user.name} #{_('and published on')} <a href='#{blog.base_url}'>#{blog.blog_name}</a> | <a href='#{self.permalink_url}'>#{_('direct link to this article')}</a> | #{_('If you are reading this article elsewhere than')} <a href='#{blog.base_url}'>#{blog.blog_name}</a>, #{_('it has been illegally reproduced and without proper authorization')}.</small></p>"

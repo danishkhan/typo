@@ -47,10 +47,10 @@ class Article < Content
 
   has_and_belongs_to_many :tags, :foreign_key => 'article_id'
 
-  named_scope :category, lambda {|category_id| {:conditions => ['categorizations.category_id = ?', category_id], :include => 'categorizations'}}
-  named_scope :drafts, :conditions => ['state = ?', 'draft']
-  named_scope :without_parent, {:conditions => {:parent_id => nil}}
-  named_scope :child_of, lambda { |article_id| {:conditions => {:parent_id => article_id}} }
+  scope :category, lambda {|category_id| {:conditions => ['categorizations.category_id = ?', category_id], :include => 'categorizations'}}
+  scope :drafts, :conditions => ['state = ?', 'draft']
+  scope :without_parent, {:conditions => {:parent_id => nil}}
+  scope :child_of, lambda { |article_id| {:conditions => {:parent_id => article_id}} }
 
   def has_child?
     Article.exists?({:parent_id => self.id})
@@ -61,7 +61,7 @@ class Article < Content
   has_many :triggers, :as => :pending_item
   after_save :post_trigger
 
-  attr_accessor :draft
+  attr_accessor :draft, :keywords
 
   has_state(:state,
             :valid_states  => [:new, :draft,
@@ -70,9 +70,8 @@ class Article < Content
             :initial_state =>  :new,
             :handles       => [:withdraw,
                                :post_trigger,
-                               :after_save, :send_pings, :send_notifications,
+                               :send_pings, :send_notifications,
                                :published_at=, :just_published?])
-
 
   include Article::States
 
@@ -165,10 +164,10 @@ class Article < Content
 
   def param_array
     @param_array ||=
-      returning([published_at.year,
+      [published_at.year,
                  sprintf('%.2d', published_at.month),
                  sprintf('%.2d', published_at.day),
-                 permalink]) \
+                 permalink].tap \
       do |params|
         this = self
         k = class << params; self; end
@@ -221,7 +220,7 @@ class Article < Content
     urls = Array.new
     html.gsub(/<a\s+[^>]*>/) do |tag|
       if(tag =~ /\bhref=(["']?)([^ >"]+)\1/)
-        urls.push($2)
+        urls.push($2.strip)
       end
     end
 
@@ -233,14 +232,16 @@ class Article < Content
 
     articleurl ||= permalink_url(nil)
 
-    weblogupdatesping_urls = blog.ping_urls.gsub(/ +/,'').split(/[\n\r]+/)
+    weblogupdatesping_urls = blog.ping_urls.gsub(/ +/,'').split(/[\n\r]+/).map(&:strip)
     pingback_or_trackback_urls = self.html_urls
 
     ping_urls = weblogupdatesping_urls + pingback_or_trackback_urls
 
+    existing_ping_urls = pings.collect { |p| p.url }
+
     ping_urls.uniq.each do |url|
       begin
-        unless pings.collect { |p| p.url }.include?(url.strip)
+        unless existing_ping_urls.include?(url)
           ping = pings.build("url" => url)
 
           if weblogupdatesping_urls.include?(url)
@@ -358,9 +359,9 @@ class Article < Content
     state.published = cast_to_boolean(newval)
   end
 
-  # Bloody rails reloading. Nasty workaround.
+  # FIXME: Bloody rails reloading. Nasty workaround.
   def allow_comments=(newval)
-    returning(cast_to_boolean(newval)) do |val|
+    cast_to_boolean(newval).tap do |val|
       if self[:allow_comments] != val
         changed if published?
         self[:allow_comments] = val
@@ -369,7 +370,7 @@ class Article < Content
   end
 
   def allow_pings=(newval)
-    returning(cast_to_boolean(newval)) do |val|
+    cast_to_boolean(newval).tap do |val|
       if self[:allow_pings] != val
         changed if published?
         self[:allow_pings] = val
@@ -494,6 +495,8 @@ class Article < Content
     end
 
     post = blog.show_extended_on_rss ? post = html(:all) : post = html(:body)
+    post = "<p>This article is password protected. Please <a href='#{permalink_url}'>fill in your password</a> to read it</p>" unless password.nil? or password.empty?
+
     content = blog.rss_description ? post + rss_desc : post
     entry.content(content, :type => "html")
   end

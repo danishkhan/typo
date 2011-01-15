@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require 'spec_helper'
 
 describe 'Given a new blog' do
   before(:each) do
@@ -61,8 +61,8 @@ describe 'Given a new blog' do
     @blog.theme.should == 'true-blue-3'
   end
 
-  it 'should not use gravatar' do
-    @blog.should_not be_use_gravatar
+  it 'should not use any avatar plugin' do
+    @blog.plugin_avatar.should == ''
   end
 
   # Another clumsy setting name

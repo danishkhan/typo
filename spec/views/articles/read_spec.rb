@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
+require 'spec_helper'
 
 with_each_theme do |theme, view_path|
   describe "#{view_path}/articles/read" do
@@ -13,22 +13,22 @@ with_each_theme do |theme, view_path|
         alias :tag_links :article_links
       end
     end
-  
+
     context "applying text filters" do
       before(:each) do
         @controller.action_name = "redirect"
-        assigns[:article] = contents('article1')
-        render "articles/read"
+        assign(:article, contents('article1'))
+        render :file => "articles/read"
       end
-    
+
       it "should not have too many paragraph marks around body" do
-        response.should have_tag("p", "body")
-        response.should_not have_tag("p>p", "body")
+        rendered.should have_selector("p", :content => "body")
+        rendered.should_not have_selector("p>p", :content => "body")
       end
 
       it "should not have too many paragraph marks around extended contents" do
-        response.should have_tag("p", "extended content")
-        response.should_not have_tag("p>p", "extended content")
+        rendered.should have_selector("p", :content => "extended content")
+        rendered.should_not have_selector("p>p", :content => "extended content")
       end
     end
 
@@ -36,14 +36,14 @@ with_each_theme do |theme, view_path|
       before(:each) do
         Blog.default.comment_text_filter = 'textile'
         @controller.action_name = "read"
-        assigns[:article] = contents('article1')
-        render "articles/read"
+        assign(:article, contents('article1'))
+        render :file => "articles/read"
       end
-    
+
       it "should not have too many paragraph marks around comment contents" do
-        response.should have_tag("p>em", "italic")
-        response.should have_tag("p>strong", "bold")
-        response.should_not have_tag("p>p>em", "italic")
+        rendered.should have_selector("p>em", :content => "italic")
+        rendered.should have_selector("p>strong", :content => "bold")
+        rendered.should_not have_selector("p>p>em", :content => "italic")
       end
     end
 
@@ -51,15 +51,15 @@ with_each_theme do |theme, view_path|
       before(:each) do
         Blog.default.comment_text_filter = 'textile'
         @controller.action_name = "read"
-        assigns[:article] = contents('article3')
-        render "articles/read"
+        assign(:article, contents('article3'))
+        render :file => "articles/read"
       end
-    
+
       it "should automatically add links" do
-	response.should have_tag("a[href=mailto:foo@bar.com]",
-				 "foo@bar.com")
-        response.should have_tag("a[href=http://www.bar.com]",
-				 "http://www.bar.com")
+	rendered.should have_selector("a", :href => "mailto:foo@bar.com",
+				 :content => "foo@bar.com")
+        rendered.should have_selector("a", :href=>"http://www.bar.com",
+				 :content => "http://www.bar.com")
       end
     end
   end

@@ -3,14 +3,15 @@
 
 
   <p><%= _("Drag and drop to change the sidebar items displayed on this blog.  To remove items from the sidebar just click remove  Changes are saved immediately, but not activated until you click the 'Publish' button")%>.</p>
-
-  <%= form_remote_tag(:url=>{:action=>'publish'},
+  <%= form_remote_tag(:action=>'publish',
+                      :method => :post,
                       :loading => "new Element.show('update_spinner')",
                       :success => "var g = new k.Growler({location : 'br'}); 
-                			g.info('Sidebar was successfully saved', {life: 3});",
-                			:failure => "var g = new k.Growler({location : 'br'}); 
-                			g.error('Oops, something wrong happened', {life: 3});
-                			")  %>
+                                    g.info('Sidebar was successfully saved', {life: 3});",
+                      :failure => "var g = new k.Growler({location : 'br'}); 
+                                    g.error('Oops, something wrong happened', {life: 3});") \
+      do %>
+
   <div>
     <%= save(_('Publish changes'))%>
   </div>
@@ -20,7 +21,11 @@
     <div id="available" class='ui-accordion ui-widget ui-helper-reset ui-accordion-icons'>
       <h3 class='ui-accordion-header ui-helper-reset ui-state-active ui-corner-top'><%= _("Available Items")%></h3>
       <div id="available_box" class='ui-accordion-content ui-helper-reset ui-widget-content ui-corner-bottom ui-accordion-content-active'>
-        <%= render :partial => 'availables', :object => @available %>
+        <% if @available.blank? %>
+          <p>  <%= _("You have no plugins installed")%>...  </p>
+        <% else %>
+          <%= render :partial => 'available', :collection => @available %>
+        <% end %>
       </div>
     </div>
 
@@ -31,7 +36,15 @@
                       :style => 'display:none;' -%>
       </h3>
       <div id="active" class='ui-accordion-content ui-helper-reset ui-widget-content ui-corner-bottom ui-accordion-content-active'>
-        <%= render :partial => 'actives', :object => @active %>
+        <% if @active.blank? %>
+          <%= render :partial => 'target' %>
+        <% else %>
+         <%= render :partial => 'active', :collection => @active %>
+        <% end %>
+          <%= sortable_element "active", :url => {:action => 'set_active'},
+             :tag => 'div',
+             :handle => 'handle', :containment => ['active','available_box'],
+             :loading => "new Element.show('update_spinner')" %>
       </div>
     </div>
     <br class='clear' />
@@ -41,9 +54,10 @@
 	  </div>
 
   </div>
-  
+  <% end %>
+
 <h2><%= _("Get more plugins") %></h2>
-  <p>You can download and install sidebar plugins from our official <a href="http://wiki.github.com/fdv/typo/typo-plugins-list">plugin repository</a>. All you have to do is upload the theme directory in your vendor/plugins directory. You can aso run</p> 
-  
+  <p>You can download and install sidebar plugins from our official <a href="http://wiki.github.com/fdv/typo/typo-plugins-list">plugin repository</a>. All you have to do is upload the theme directory in your vendor/plugins directory. You can aso run</p>
+
   <p><code>script/plugins install http://svn.typosphere.org/plugins/myplugin.</code></p>
-  
+

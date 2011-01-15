@@ -1,8 +1,7 @@
-require File.dirname(__FILE__) + '/../spec_helper'
-require 'dns_mock'
+require 'spec_helper'
 
 describe XmlController do
-  integrate_views
+  render_views
 
   def assert_select(*args, &block)
     @html_document ||= HTML::Document.new(@response.body, false, true)

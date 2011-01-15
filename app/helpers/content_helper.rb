@@ -11,17 +11,6 @@ module ContentHelper
     "#{pluralize(grouping.article_counter, _('no posts') , _('1 post'), __('%d posts'))} with #{grouping.class.to_s.underscore} '#{grouping.display_name}'"
   end
 
-  def ul_tag_for(grouping_class)
-    case
-    when grouping_class == Tag
-      %{<ul id="taglist" class="tags">}
-    when grouping_class == Category
-      %{<ul class="categorylist">}
-    else
-      '<ul>'
-    end
-  end
-
   def page_title
     blog_name = this_blog.blog_name || "Typo"
     if !@page_title.blank?
@@ -35,12 +24,12 @@ module ContentHelper
   include SidebarHelper
 
   def article_links(article)
-    returning code = [] do
-      code << category_links(article)   unless article.categories.empty?
-      code << tag_links(article)        unless article.tags.empty?
-      code << comments_link(article)    if article.allow_comments?
-      code << trackbacks_link(article)  if article.allow_pings?
-    end.join("&nbsp;<strong>|</strong>&nbsp;")
+    code = []
+    code << category_links(article)   unless article.categories.empty?
+    code << tag_links(article)        unless article.tags.empty?
+    code << comments_link(article)    if article.allow_comments?
+    code << trackbacks_link(article)  if article.allow_pings?
+    code.join("&nbsp;<strong>|</strong>&nbsp;")
   end
 
   def category_links(article)

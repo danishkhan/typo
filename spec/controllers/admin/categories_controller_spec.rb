@@ -1,7 +1,7 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
+require 'spec_helper'
 
 describe Admin::CategoriesController do
-  integrate_views
+  render_views
 
   before do
     request.session = { :user => users(:tobi).id }
@@ -10,32 +10,32 @@ describe Admin::CategoriesController do
   it "test_index" do
     get :index
     assert_template 'index'
-    assert_template_has 'categories'
+    assigns(:categories).should_not be_nil
     assert_tag :tag => "div",
       :attributes => { :id => "category_container" }
   end
 
   it "test_create" do
-    assert_difference 'Category.count' do
+    lambda do
       post :edit, 'category' => { :name => "test category" }
       assert_response :redirect, :action => 'index'
-    end
+    end.should change(Category, :count)
   end
 
   it "test_edit" do
-    get :edit, :id => categories(:software).id
+    get :edit, :id => Factory(:category).id
     assert_template 'new'
-    assert_template_has 'category'
+    assigns(:category).should_not be_nil
     assert assigns(:category).valid?
   end
 
   it "test_update" do
-    post :edit, :id => categories(:software).id
+    post :edit, :id => Factory(:category).id
     assert_response :redirect, :action => 'index'
   end
 
   it "test_destroy" do
-    test_id = categories(:software).id
+    test_id = Factory(:category).id
     assert_not_nil Category.find(test_id)
 
     get :destroy, :id => test_id
@@ -49,21 +49,28 @@ describe Admin::CategoriesController do
   end
 
   it "test_order" do
-    assert_equal categories(:software), Category.find(:first, :order => :position)
-    get :order, :category_list => [categories(:personal).id, categories(:hardware).id, categories(:software).id]
+    second_cat = Factory(:category, :name => 'b')
+    first_cat = Factory(:category, :name => 'a')
+    third_cat = Factory(:category, :name => 'c')
+    assert_equal second_cat, Category.find(:first, :order => :position)
+    get :order, :category_list => [first_cat.id, second_cat.id, third_cat.id]
     assert_response :success
-    assert_equal categories(:personal), Category.find(:first, :order => :position)
+    assert_equal first_cat, Category.find(:first, :order => :position)
   end
 
-  it "test_asort" do
-    assert_equal categories(:software), Category.find(:first, :order => :position)
+  it "test_asort sort by alpha" do
+    second_cat = Factory(:category, :name => 'b')
+    first_cat = Factory(:category, :name => 'a')
+    assert_equal second_cat, Category.find(:first, :order => :position)
     get :asort
     assert_response :success
     assert_template "_categories"
-    assert_equal categories(:hardware), Category.find(:first, :order => :position)
+    assert_equal first_cat, Category.find(:first, :order => :position)
   end
 
   it "test_category_container" do
+    Factory(:category)
+    Factory(:category)
     get :category_container
     assert_response :success
     assert_template "_categories"

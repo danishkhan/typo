@@ -7,15 +7,13 @@ module Article::States
     end
 
     def exit_hook(target)
-      RAILS_DEFAULT_LOGGER.debug("#{content} leaving state #{self.class}")
+      ::Rails.logger.debug("#{content} leaving state #{self.class}")
     end
 
     def enter_hook
-      RAILS_DEFAULT_LOGGER.debug("#{content} entering state #{self.class}")
+      ::Rails.logger.debug("#{content} entering state #{self.class}")
     end
 
-    def before_save; true; end
-    def after_save; true; end
     def post_trigger; true; end
     def send_notifications; true; end
     def send_pings; true; end
@@ -31,24 +29,19 @@ module Article::States
       content[:published_at] = nil
     end
 
-    def before_save
-      content.state = :draft
-    end
-
     def published=(boolean)
-      returning(boolean) do
-        if boolean
-          content.state = :just_published
-        end
+      if boolean
+        content.state = :just_published
       end
+      return boolean
     end
 
     def published_at=(new_time)
       new_time = (new_time.to_time rescue nil)
-      returning(content[:published_at] = new_time) do
-        break if new_time.nil?
+      unless new_time.nil?
         content.state = (new_time <= Time.new) ? :just_published : :publication_pending
       end
+      content[:published_at] = new_time
     end
 
     def draft?

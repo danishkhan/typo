@@ -1,4 +1,6 @@
-require 'factory_girl'
+Factory.sequence :name do |n|
+  "name_#{n}"
+end
 
 Factory.sequence :user do |n|
   "user#{n}"
@@ -8,9 +10,17 @@ Factory.sequence :guid do |n|
   "deadbeef#{n}"
 end
 
+Factory.sequence :file_name do |f|
+  "file_name_#{f}"
+end
+
+Factory.sequence :category do |n|
+  "category_#{n}"
+end
+
 Factory.define :user do |u|
   u.login { Factory.next(:user) }
-  u.email 'some.where@out.there'
+  u.email { Factory.next(:user) }
   u.notify_via_email false
   u.notify_on_new_articles false
   u.notify_watch_my_articles false
@@ -51,6 +61,7 @@ Factory.define :profile_admin, :class => :profile do |l|
   l.nicename 'Typo administrator'
   l.modules [:dashboard, :write, :content, :feedback, :themes, :sidebar, :users, :settings, :profile]
 end
+
 Factory.define :profile_publisher, :class => :profile do |l|
   l.label 'published'
   l.nicename 'Blog publisher'
@@ -63,7 +74,23 @@ Factory.define :profile_contributor, :class => :profile do |l|
 end
 
 Factory.define :category do |c|
-  c.name 'SoftwareFactory'
-  c.permalink 'softwarefactory'
+  c.name {Factory.next(:category)}
+  c.permalink {Factory.next(:category)}
   c.position 1
+end
+
+Factory.define :tag do |tag|
+  tag.name {Factory.next(:name)}
+  tag.display_name {Factory.next(:name)}
+end
+
+Factory.define :resource do |r|
+  r.filename {Factory.next(:file_name)}
+  r.mime 'image/jpeg'
+  r.size 110
+end
+
+Factory.define :redirect do |r|
+  r.from_path 'foo/bar'
+  r.to_path '/someplace/else'
 end

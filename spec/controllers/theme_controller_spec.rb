@@ -1,12 +1,12 @@
-require File.dirname(__FILE__) + '/../spec_helper'
+require 'spec_helper'
 
 describe ThemeController do
-  integrate_views
+  render_views
 
   it "test_stylesheets" do
     get :stylesheets, :filename => "style.css"
     assert_response :success
-    assert_equal "text/css", @response.content_type
+    assert_equal "text/css; charset=utf-8", @response.content_type
     assert_equal "utf-8", @response.charset
     assert_equal "inline; filename=\"style.css\"", @response.headers['Content-Disposition']
   end
@@ -30,7 +30,8 @@ describe ThemeController do
     assert @response.body =~ /Static View Test from typographic/
   end
 
-  def disabled_test_javascript
+  it "disabled_test_javascript"
+  if false
     get :stylesheets, :filename => "typo.js"
     assert_response :success
     assert_equal "text/javascript", @response.content_type

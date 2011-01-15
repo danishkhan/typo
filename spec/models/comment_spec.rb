@@ -1,6 +1,4 @@
-require File.dirname(__FILE__) + "/../spec_helper"
-
-require 'dns_mock'
+require 'spec_helper'
 
 describe Comment do
 
@@ -12,9 +10,10 @@ describe Comment do
   end
 
   describe '#permalink_url' do
+    before { @c = feedback(:old_comment) }
+    subject { @c.permalink_url }
     it 'should render permalink to comment in public part' do
-      c = feedback(:old_comment)
-      assert_equal "http://myblog.net/2004/05/01/inactive-article#comment-#{c.id}", c.permalink_url
+      should == "http://myblog.net/2004/05/01/inactive-article#comment-#{@c.id}"
     end
   end
 
@@ -50,7 +49,7 @@ describe Comment do
                         :article => contents(:inactive_article))
 
       assert ! c.save
-      assert c.errors.invalid?('article_id')
+      assert c.errors['article_id'].any?
 
       c.article = contents(:article1)
 
@@ -215,7 +214,7 @@ describe Comment do
         c.article_id = contents(:article1).id
       end
       assert comment.save!
-      
+
       assert ! comment.published?
       assert comment.spam?
       assert ! comment.status_confirmed?
@@ -229,11 +228,11 @@ describe Comment do
         c.user_id = users(:tobi).id
       end
       assert comment.save!
-      
+
       assert comment.published?
       assert comment.ham?
       assert comment.status_confirmed?
-      
+
     end
   end
 

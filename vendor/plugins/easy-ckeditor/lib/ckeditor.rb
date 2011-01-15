@@ -1,18 +1,18 @@
 # Ckeditor
 module Ckeditor
   begin
-    CONFIG = YAML.load_file("#{RAILS_ROOT}/config/ckeditor.yml")[RAILS_ENV]
+    CONFIG = YAML.load_file("#{::Rails.root.to_s}/config/ckeditor.yml")[::Rails.env]
   rescue => e
     CONFIG = nil
   end
   PLUGIN_NAME = 'easy-ckeditor'
-  PLUGIN_PATH = "#{RAILS_ROOT}/vendor/plugins/#{PLUGIN_NAME}"
-  PLUGIN_PUBLIC_PATH = "#{RAILS_ROOT}/public/files"
+  PLUGIN_PATH = "#{::Rails.root.to_s}/vendor/plugins/#{PLUGIN_NAME}"
+  PLUGIN_PUBLIC_PATH = "#{::Rails.root.to_s}/public/files"
   PLUGIN_PUBLIC_URI = "/files"
   PLUGIN_CONTROLLER_PATH = "#{PLUGIN_PATH}/app/controllers"
   PLUGIN_VIEWS_PATH = "#{PLUGIN_PATH}/app/views"
   PLUGIN_HELPER_PATH = "#{PLUGIN_PATH}/app/helpers"
-  PLUGIN_FILE_MANAGER_URI = ''
+  PLUGIN_FILE_MANAGER_URI = '/fm/filemanager'
   PLUGIN_FILE_MANAGER_UPLOAD_URI = '/ckeditor/upload'
 
   module Helper
@@ -45,8 +45,6 @@ module Ckeditor
         inputs = "<textarea id='#{id}' style='width:#{width};height:#{height}' #{cols} #{rows} #{classy} name='#{object}[#{field}]'>#{h value}</textarea>\n"
       end
 
-      js_path = "#{controller.relative_url_root}/javascripts"
-      base_path = "#{js_path}/ckeditor/"
       return inputs <<
         javascript_tag("CKEDITOR.replace('#{object}[#{field}]', {
     filebrowserBrowseUrl : '#{PLUGIN_FILE_MANAGER_URI}',
@@ -89,24 +87,5 @@ module Ckeditor
       "var oEditor = CKEDITOR.instances.#{id}.getData();"
 
     end
-  end
-end
-
-include ActionView
-module ActionView::Helpers::AssetTagHelper
-  alias_method :rails_javascript_include_tag, :javascript_include_tag
-
-  #  <%= javascript_include_tag :defaults, :ckeditor %>
-  def javascript_include_tag(*sources)
-    main_sources, application_source = [], []
-    if sources.include?(:ckeditor)
-      sources.delete(:ckeditor)
-      sources.push('ckeditor/ckeditor')
-    end
-    unless sources.empty?
-      main_sources = rails_javascript_include_tag(*sources).split("\n")
-      application_source = main_sources.pop if main_sources.last.include?('application.js')
-    end
-    [main_sources.join("\n"), application_source].join("\n")
   end
 end

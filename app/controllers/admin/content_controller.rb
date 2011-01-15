@@ -8,7 +8,7 @@ class Admin::ContentController < Admin::BaseController
 
   def auto_complete_for_article_keywords
     @items = Tag.find_with_char params[:article][:keywords].strip
-    render :inline => "<%= auto_complete_result @items, 'name' %>"
+    render :inline => "<%= raw auto_complete_result @items, 'name' %>"
   end
 
   def index
@@ -16,7 +16,7 @@ class Admin::ContentController < Admin::BaseController
     @articles = Article.search_no_draft_paginate(@search, :page => params[:page], :per_page => this_blog.admin_display_elements)
 
     if request.xhr?
-      render :partial => 'article_list', :object => @articles
+      render :partial => 'article_list', :locals => { :articles => @articles }
     else
       @article = Article.new(params[:article])
     end
@@ -28,7 +28,6 @@ class Admin::ContentController < Admin::BaseController
 
   def edit
     @article = Article.find(params[:id])
-
     unless @article.access_by? current_user
       redirect_to :action => 'index'
       flash[:error] = _("Error, you are not allowed to perform this action")
@@ -48,6 +47,7 @@ class Admin::ContentController < Admin::BaseController
 
     if request.post?
       @article.destroy
+      flash[:notice] = _("This article was deleted successfully")
       redirect_to :action => 'index'
       return
     end
@@ -111,7 +111,7 @@ class Admin::ContentController < Admin::BaseController
     @article.state = "draft" unless @article.state == "withdrawn"
     if @article.save
       render(:update) do |page|
-        page.replace_html('autosave', hidden_field_tag('id', @article.id))
+        page.replace_html('autosave', hidden_field_tag('article[id]', @article.id))
         page.replace_html('permalink', text_field('article', 'permalink', {:class => 'small medium'}))
         page.replace_html('preview_link', link_to(_("Preview"), {:controller => '/articles', :action => 'preview', :id => @article.id}, {:target => 'new'}))
       end
@@ -148,6 +148,7 @@ class Admin::ContentController < Admin::BaseController
 
     @resources = Resource.find(:all, :conditions => "mime NOT LIKE '%image%'", :order => 'filename')
     @images = Resource.paginate :page => params[:page], :conditions => "mime LIKE '%image%'", :order => 'created_at DESC', :per_page => 10
+    @article.keywords = @article.tags.map { |tag| tag.display_name }.sort.join(", ")
     @article.attributes = params[:article]
 
     if request.post?
@@ -224,9 +225,11 @@ class Admin::ContentController < Admin::BaseController
   end
 
   def get_or_build_article
+    params[:id] = params[:article][:id] if params[:article] and params[:article][:id]
+    
     @article = case params[:id]
              when nil
-               returning(Article.new) do |art|
+               Article.new.tap do |art|
                  art.allow_comments = this_blog.default_allow_comments
                  art.allow_pings    = this_blog.default_allow_pings
                  art.text_filter    = (current_user.editor == 'simple') ? current_user.text_filter : 1

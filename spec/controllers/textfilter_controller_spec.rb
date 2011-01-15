@@ -1,6 +1,4 @@
-require File.dirname(__FILE__) + '/../spec_helper'
-
-require 'flickr_mock'
+require 'spec_helper'
 
 describe TextfilterController do
   before do
@@ -78,7 +76,7 @@ describe TextfilterController do
   end
 
   describe 'code textfilter' do
-    
+
     describe 'single line' do
 
       it 'should made nothin if no args' do

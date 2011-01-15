@@ -1,8 +1,8 @@
-require File.dirname(__FILE__) + '/../../spec_helper'
+require 'spec_helper'
 
 describe Admin::TextfiltersController do
 
-  integrate_views
+  render_views
 
   before do
     request.session = { :user => users(:tobi).id }
